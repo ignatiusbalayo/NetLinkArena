@@ -60,7 +60,7 @@ jobs:
       # 5. VALIDATE
       - name: Validate Submission Format
         run: |
-          python competition/validate_submission.py "${{ env.SUB_PATH }}" NetLinkArena_Dataset/data/public/test_nodes.csv
+          python competition/validate_submission.py "${{ env.SUB_PATH }}" data/public/test_nodes.csv
 
       # 6. EVALUATE
       - name: Run Evaluation
