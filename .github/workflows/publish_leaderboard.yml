@@ -1,38 +1,50 @@
-name: Publish Leaderboard
+name: Publish Leaderboard to GitHub Pages
 
+# 1. TRIGGER: Only runs when the scoring bot updates the leaderboard files on the main branch
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
     paths:
-      - "leaderboard/leaderboard.csv"
+      - 'leaderboard/leaderboard.csv'
+      - 'leaderboard/leaderboard.md'
+
+# 2. PERMISSIONS: Give GitHub Actions the exact rights needed to update the website
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 3. CONCURRENCY: Prevents two website updates from crashing into each other
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
 
 jobs:
-  render:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+    
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Setup GitHub Pages
+        uses: actions/configure-pages@v4
+
+      # (Optional) If you have a script that generates a fancy docs/leaderboard.html, run it here:
+      # - name: Build HTML
+      #   run: python competition/build_html.py
+
+      - name: Upload Artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          python-version: "3.10"
+          # If your website files are in a specific folder like 'docs', change this to './docs'
+          # Leaving it as '.' uploads the root directory, which works perfectly for leaderboard.md
+          path: '.'
 
-      - name: Install deps
-        run: |
-          pip install -r requirements.txt
-
-      - name: Render leaderboard markdown
-        run: |
-          python competition/render_leaderboard.py
-
-      - name: Commit rendered leaderboard
-        run: |
-          if git diff --quiet; then
-            echo "No changes."
-            exit 0
-          fi
-          git config user.name "github-actions"
-          git config user.email "github-actions@users.noreply.github.com"
-          git add leaderboard/leaderboard.md
-          git commit -m "Update leaderboard.md"
-          git push
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

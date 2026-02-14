@@ -1,1 +1,107 @@
-# GitHub Actions scoring workflow placeholder
+name: Score Submission
+
+# 1. TRIGGER: Runs whenever a new .csv file is pushed to the submissions folder
+on:
+  push:
+    paths:
+      - 'submissions/*.csv'
+
+jobs:
+  grade-and-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Dependencies
+        run: |
+          pip install pandas scikit-learn
+
+      # 2. GET PUBLIC DATA
+      - name: Fetch Public Dataset
+        run: |
+          wget -q https://github.com/ignatiusbalayo/NetLinkArena/releases/download/v1.0/NetLinkArena_Dataset.zip
+          unzip -q NetLinkArena_Dataset.zip
+
+      # 3. LOAD SECRETS
+      - name: Load Ground Truth Data
+        env:
+          TEST_LABELS_CSV: ${{ secrets.TEST_LABELS_CSV }}
+        run: |
+          echo "$TEST_LABELS_CSV" > hidden_labels.csv
+
+      # 4. FIND SUBMISSION: Grab the most recently uploaded CSV safely
+      - name: Find Latest Submission
+        id: find_sub
+        run: |
+          # Prevent errors if the folder has no CSVs
+          shopt -s nullglob
+          CSVS=(submissions/*.csv)
+          if [ ${#CSVS[@]} -eq 0 ]; then
+            echo "❌ No CSV files found! Was a file deleted?"
+            exit 1
+          fi
+          
+          # Grab the newest one
+          LATEST_CSV=$(ls -t submissions/*.csv | head -n 1)
+          echo "✅ Processing file: $LATEST_CSV"
+          echo "SUB_PATH=$LATEST_CSV" >> $GITHUB_ENV
+
+      # 5. VALIDATE
+      - name: Validate Submission Format
+        run: |
+          python competition/validate_submission.py "${{ env.SUB_PATH }}" NetLinkArena_Dataset/data/public/test_nodes.csv
+
+      # 6. EVALUATE
+      - name: Run Evaluation
+        id: eval
+        run: |
+          OUTPUT=$(python competition/evaluate.py "${{ env.SUB_PATH }}" hidden_labels.csv)
+          echo "$OUTPUT"
+          
+          ROC_AUC=$(echo "$OUTPUT" | grep "ROC_AUC=" | cut -d'=' -f2)
+          AP=$(echo "$OUTPUT" | grep "AP=" | cut -d'=' -f2)
+          
+          echo "roc_auc=$ROC_AUC" >> $GITHUB_OUTPUT
+          echo "ap=$AP" >> $GITHUB_OUTPUT
+
+      # 7. UPDATE LEADERBOARD
+      - name: Update Leaderboard CSV
+        run: |
+          TEAM_NAME="${{ github.actor }}"
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          ROC_AUC="${{ steps.eval.outputs.roc_auc }}"
+          AP="${{ steps.eval.outputs.ap }}"
+          
+          mkdir -p leaderboard
+          
+          if [ ! -f leaderboard/leaderboard.csv ]; then
+            echo "team,model,roc_auc,ap,timestamp_utc,notes" > leaderboard/leaderboard.csv
+          fi
+          
+          echo "${TEAM_NAME},Baseline,${ROC_AUC},${AP},${TIMESTAMP}," >> leaderboard/leaderboard.csv
+
+      # 8. RENDER MARKDOWN
+      - name: Render Markdown Leaderboard
+        run: |
+          python competition/render_leaderboard.py
+
+      # 9. COMMIT & PUSH
+      - name: Commit and Push Changes
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions@github.com"
+          git add leaderboard/leaderboard.csv leaderboard/leaderboard.md
+          
+          git diff --quiet && git diff --staged --quiet || git commit -m "🏆 Auto-update leaderboard for ${{ github.actor }}"
+          git push

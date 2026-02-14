@@ -43,3 +43,4 @@ Thumbs.db
 # Ignore ZIPs if you don't want them tracked (optional)
 # ----------------------------
 NetLinkArena_Dataset.zip
+NetLinkArena_Dataset/
