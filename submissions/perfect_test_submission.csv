@@ -1,4 +1,4 @@
-id,source,target,label
+id,source,target,y_pred
 0,1570,2215,0
 1,1472,1865,0
 2,1489,1729,0
