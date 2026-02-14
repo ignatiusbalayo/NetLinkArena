@@ -31,7 +31,7 @@ jobs:
       - name: Fetch Public Dataset
         run: |
           wget -q https://github.com/ignatiusbalayo/NetLinkArena/releases/download/v1.0/NetLinkArena_Dataset.zip
-          unzip -q NetLinkArena_Dataset.zip
+          unzip -oq NetLinkArena_Dataset.zip
 
       # 3. LOAD SECRETS
       - name: Load Ground Truth Data
