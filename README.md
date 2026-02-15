@@ -5,8 +5,6 @@
 
 NetLinkArena is a link prediction competition where participants must infer missing citation links between research papers. Your score is determined by **AUC-ROC** - how well you rank true connections above false ones!
 
-⚠️ **This challenge rewards models that capture structural, semantic, and relational patterns in graphs — not just node-level features.**
-
 ---
 
 ## 📊 Dataset Information
@@ -194,16 +192,6 @@ Example `metadata.json`:
 
 The PR will be **automatically scored** and the result posted as a comment.
 
-### Option B: Manual Validation
-
-Before submitting, validate your predictions locally:
-
-```bash
-python competition/validate_submission.py predictions.csv
-```
-
----
-
 ## 6. 📥 Download Dataset
 
 The complete dataset is available in **GitHub Releases**.
@@ -272,12 +260,12 @@ Violations may result in disqualification.
 
 ## 9. Baseline Performance
 
-**Simple baseline (no GNN):**
-- Model: Random Forest on concatenated node features
-- Training time: < 5 minutes
-- AUC-ROC: ~0.58-0.62
+**Simple GCN Baseline:**
+2-layer GCN (128 → 64 dimensions, dot product decoder)
+100 epochs, ~20 minutes on CPU
+Expected AUC-ROC: 0.65-0.75
 
-**Your goal:** Beat the baseline with GNN models! 🎯
+**Your goal:** Beat the baseline with advanced GNN models! 🎯
 
 ---
 
