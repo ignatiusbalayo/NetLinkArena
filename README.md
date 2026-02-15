@@ -76,7 +76,7 @@ Participants train any GNN or ML model *offline* and submit probability predicti
 │   └── metrics.py
 ├── submissions/
 │   ├── README.md
-│   └── inbox/<team>/<run_id>/predictions.csv
+│   └── predictions.csv
 ├── leaderboard/
 │   ├── leaderboard.csv
 │   └── leaderboard.md
@@ -167,12 +167,12 @@ data/public/sample_submission.csv
 
 ## 5. How to Submit
 
-### Option A: Pull Request (Recommended)
+### Pull Request 
 
 1. Fork this repository
 2. Create a new folder:
 ```
-submissions/inbox/<team_name>/<run_id>/
+submissions/predictions.csv`
 ```
 
 3. Add:
