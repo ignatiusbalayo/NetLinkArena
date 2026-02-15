@@ -24,7 +24,7 @@ The dataset was processed using the `Planetoid` library with the following graph
 
 - ✅ **Sparse Features** - 96.5% of feature values are zeros (bag-of-words representation)
 - ✅ **Graph Structure Critical** - Node features alone are insufficient; GNN models required
-- ✅ **Obfuscated Features** - Features have been permuted and noise-injected to prevent LLM exploitation
+- ✅ **Obfuscated Features** - Node features have been permuted and noise-injected to prevent information leakage
 - ✅ **Large Graph** - 3,327 nodes with complex citation patterns
 
 **Expected Performance:**
