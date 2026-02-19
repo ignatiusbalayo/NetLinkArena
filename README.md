@@ -5,8 +5,6 @@
 
 NetLinkArena is a link prediction competition where participants must infer missing citation links between research papers. Your score is determined by **AUC-ROC** - how well you rank true connections above false ones!
 
-⚠️ **This challenge rewards models that capture structural, semantic, and relational patterns in graphs — not just node-level features.**
-
 ---
 
 ## 📊 Dataset Information
@@ -26,7 +24,7 @@ The dataset was processed using the `Planetoid` library with the following graph
 
 - ✅ **Sparse Features** - 96.5% of feature values are zeros (bag-of-words representation)
 - ✅ **Graph Structure Critical** - Node features alone are insufficient; GNN models required
-- ✅ **Obfuscated Features** - Features have been permuted and noise-injected to prevent LLM exploitation
+- ✅ **Obfuscated Features** - Node features have been permuted and noise-injected to prevent information leakage
 - ✅ **Large Graph** - 3,327 nodes with complex citation patterns
 
 **Expected Performance:**
@@ -78,7 +76,7 @@ Participants train any GNN or ML model *offline* and submit probability predicti
 │   └── metrics.py
 ├── submissions/
 │   ├── README.md
-│   └── inbox/<team>/<run_id>/predictions.csv
+│   └── submissions/inbox/<team_name>/<run_id>/
 ├── leaderboard/
 │   ├── leaderboard.csv
 │   └── leaderboard.md
@@ -169,7 +167,7 @@ data/public/sample_submission.csv
 
 ## 5. How to Submit
 
-### Option A: Pull Request (Recommended)
+### Pull Request 
 
 1. Fork this repository
 2. Create a new folder:
@@ -193,16 +191,6 @@ Example `metadata.json`:
 4. Open a Pull Request to `main`
 
 The PR will be **automatically scored** and the result posted as a comment.
-
-### Option B: Manual Validation
-
-Before submitting, validate your predictions locally:
-
-```bash
-python competition/validate_submission.py predictions.csv
-```
-
----
 
 ## 6. 📥 Download Dataset
 
@@ -272,12 +260,12 @@ Violations may result in disqualification.
 
 ## 9. Baseline Performance
 
-**Simple baseline (no GNN):**
-- Model: Random Forest on concatenated node features
-- Training time: < 5 minutes
-- AUC-ROC: ~0.58-0.62
+**Simple GCN Baseline:**
+2-layer GCN (128 → 64 dimensions, dot product decoder)
+100 epochs, ~20 minutes on CPU
+Expected AUC-ROC: 0.65-0.75
 
-**Your goal:** Beat the baseline with GNN models! 🎯
+**Your goal:** Beat the baseline with advanced GNN models! 🎯
 
 ---
 
