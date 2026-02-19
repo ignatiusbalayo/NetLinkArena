@@ -1,4 +1,4 @@
 {
-  "model": "GCN-Baseline",
-  "notes": "2-layer GCN with 128->64 dimensions, dot product decoder, 100 epochs"
+  "model": "Baseline GCN (DGL 2.x)",
+  "notes": "Testing the automated grading pipeline for the first time!"
 }
