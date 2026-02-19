@@ -1,3 +1,7 @@
 team,model,score,timestamp_utc,notes
 ignatiusbalayo,Baseline,0.5000,2026-02-14T14:05:14Z,Initial baseline
+<<<<<<< HEAD
 test_bot_99,Unknown,0.5000,2026-02-19T13:28:27Z,PR #1
+=======
+debug_team,0.99,Test,Thu Feb 19 17:23:58 EAT 2026
+>>>>>>> 4a5a53b (test)
