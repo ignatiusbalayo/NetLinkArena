@@ -1,4 +1,3 @@
-
 import pandas as pd
 from sklearn.metrics import roc_auc_score, average_precision_score
 
@@ -13,8 +12,11 @@ def calculate_metrics(y_true, y_pred):
     
     # Safety check: ensure no NaNs
     if pd.isna(y_pred).any():
-        raise ValueError("Predictions contain NaN values. Please check your submission.")
-
+        raise ValueError(
+            "Predictions contain NaN values. "
+            "Please check your submission."
+        )
+    
     try:
         roc_auc = roc_auc_score(y_true, y_pred)
         ap_score = average_precision_score(y_true, y_pred)
@@ -28,7 +30,7 @@ def calculate_metrics(y_true, y_pred):
         raise ValueError(f"Metric calculation failed: {e}")
 
 if __name__ == "__main__":
-    # Quick local test if someone runs metric.py directly
+    # Quick local test if someone runs metrics.py directly
     import numpy as np
     mock_true = pd.Series([1, 0, 1, 0])
     mock_pred = pd.Series([0.9, 0.1, 0.8, 0.3])

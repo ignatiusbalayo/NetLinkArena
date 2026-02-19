@@ -1,50 +1,50 @@
-name: Publish Leaderboard to GitHub Pages
+name: Publish Leaderboard
 
-# 1. TRIGGER: Only runs when the scoring bot updates the leaderboard files on the main branch
+# Trigger when leaderboard CSV is updated on main branch
 on:
   push:
     branches:
       - main
     paths:
       - 'leaderboard/leaderboard.csv'
-      - 'leaderboard/leaderboard.md'
-
-# 2. PERMISSIONS: Give GitHub Actions the exact rights needed to update the website
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-# 3. CONCURRENCY: Prevents two website updates from crashing into each other
-concurrency:
-  group: "pages"
-  cancel-in-progress: true
 
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  render-leaderboard:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-
-      - name: Setup GitHub Pages
-        uses: actions/configure-pages@v4
-
-      # (Optional) If you have a script that generates a fancy docs/leaderboard.html, run it here:
-      # - name: Build HTML
-      #   run: python competition/build_html.py
-
-      - name: Upload Artifact
-        uses: actions/upload-pages-artifact@v3
         with:
-          # If your website files are in a specific folder like 'docs', change this to './docs'
-          # Leaving it as '.' uploads the root directory, which works perfectly for leaderboard.md
-          path: '.'
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          fetch-depth: 0
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      
+      - name: Install Dependencies
+        run: |
+          pip install pandas pyyaml
+      
+      - name: Render Leaderboard Markdown
+        run: |
+          python competition/render_leaderboard.py
+          echo "✅ Leaderboard markdown rendered"
+      
+      - name: Commit Updated Markdown
+        run: |
+          git config --global user.name "NetLinkArena Bot"
+          git config --global user.email "bot@netlinkarena.com"
+          
+          git add leaderboard/leaderboard.md
+          
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "📊 Auto-render leaderboard markdown"
+            git push origin main
+            echo "✅ Leaderboard markdown published"
+          fi

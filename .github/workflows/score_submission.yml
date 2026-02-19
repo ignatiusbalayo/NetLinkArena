@@ -1,107 +1,184 @@
 name: Score Submission
 
-# 1. TRIGGER: Runs whenever a new .csv file is pushed to the submissions folder
+# Trigger on Pull Request when files are added to submissions/inbox/
 on:
-  push:
+  pull_request:
+    types: [opened, synchronize]
     paths:
-      - 'submissions/*.csv'
+      - 'submissions/inbox/**'
 
 jobs:
-  grade-and-publish:
+  grade-submission:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-
+      pull-requests: write
+    
     steps:
-      - name: Checkout Repository
+      - name: Checkout PR branch
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 
-
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-
+      
       - name: Install Dependencies
         run: |
-          pip install pandas scikit-learn
-
-      # 2. GET PUBLIC DATA
-      - name: Fetch Public Dataset
-        run: |
-          wget -q https://github.com/ignatiusbalayo/NetLinkArena/releases/download/v1.0/NetLinkArena_Dataset.zip
-          unzip -oq NetLinkArena_Dataset.zip
-
-      # 3. LOAD SECRETS
-      - name: Load Ground Truth Data
+          pip install pandas scikit-learn pyyaml
+      
+      - name: Load Private Test Labels
         env:
           TEST_LABELS_CSV: ${{ secrets.TEST_LABELS_CSV }}
         run: |
-          echo "$TEST_LABELS_CSV" > hidden_labels.csv
-
-      # 4. FIND SUBMISSION: Grab the most recently uploaded CSV safely
-      - name: Find Latest Submission
-        id: find_sub
+          mkdir -p data/private
+          echo "$TEST_LABELS_CSV" > data/private/test_labels.csv
+          echo "✅ Loaded private test labels"
+      
+      - name: Find Submission Files
+        id: find_submission
         run: |
-          # Prevent errors if the folder has no CSVs
-          shopt -s nullglob
-          CSVS=(submissions/*.csv)
-          if [ ${#CSVS[@]} -eq 0 ]; then
-            echo "❌ No CSV files found! Was a file deleted?"
+          set -euo pipefail
+
+          # Find latest predictions.csv (Linux-safe)
+          PRED_FILE=$(find submissions/inbox -type f -name "predictions.csv" -printf '%T@ %p\n' 2>/dev/null \
+            | sort -n | tail -1 | cut -d' ' -f2-)
+
+          if [ -z "${PRED_FILE:-}" ]; then
+            echo "❌ No predictions.csv found in submissions/inbox/"
             exit 1
           fi
-          
-          # Grab the newest one
-          LATEST_CSV=$(ls -t submissions/*.csv | head -n 1)
-          echo "✅ Processing file: $LATEST_CSV"
-          echo "SUB_PATH=$LATEST_CSV" >> $GITHUB_ENV
 
-      # 5. VALIDATE
+          # Extract team name robustly
+          TEAM=$(basename "$(dirname "$(dirname "$PRED_FILE")")")
+          RUN_DIR=$(dirname "$PRED_FILE")
+
+          echo "submission_file=$PRED_FILE" >> "$GITHUB_OUTPUT"
+          echo "team=$TEAM" >> "$GITHUB_OUTPUT"
+          echo "run_dir=$RUN_DIR" >> "$GITHUB_OUTPUT"
+
+          # Metadata
+          META_FILE="$RUN_DIR/metadata.json"
+          if [ -f "$META_FILE" ] && command -v jq >/dev/null 2>&1; then
+            MODEL=$(jq -r '.model // "Unknown"' "$META_FILE")
+            NOTES=$(jq -r '.notes // ""' "$META_FILE")
+          else
+            MODEL="Unknown"
+            NOTES=""
+          fi
+
+          echo "model=$MODEL" >> "$GITHUB_OUTPUT"
+          echo "notes=$NOTES" >> "$GITHUB_OUTPUT"
+
       - name: Validate Submission Format
         run: |
-          python competition/validate_submission.py "${{ env.SUB_PATH }}" data/public/test_nodes.csv
-
-      # 6. EVALUATE
-      - name: Run Evaluation
+          python competition/validate_submission.py "${{ steps.find_submission.outputs.submission_file }}"
+          echo "✅ Submission format valid"
+      
+      - name: Evaluate Submission
         id: eval
         run: |
-          OUTPUT=$(python competition/evaluate.py "${{ env.SUB_PATH }}" hidden_labels.csv)
-          echo "$OUTPUT"
-          
-          ROC_AUC=$(echo "$OUTPUT" | grep "ROC_AUC=" | cut -d'=' -f2)
-          AP=$(echo "$OUTPUT" | grep "AP=" | cut -d'=' -f2)
-          
-          echo "roc_auc=$ROC_AUC" >> $GITHUB_OUTPUT
-          echo "ap=$AP" >> $GITHUB_OUTPUT
-
-      # 7. UPDATE LEADERBOARD
-      - name: Update Leaderboard CSV
+          SCORE=$(python competition/evaluate.py "${{ steps.find_submission.outputs.submission_file }}" data/private/test_labels.csv)
+          echo "score=$SCORE" >> $GITHUB_OUTPUT
+          echo "✅ AUC-ROC Score: $SCORE"
+      
+      - name: Comment Score on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const score = '${{ steps.eval.outputs.score }}';
+            const team = '${{ steps.find_submission.outputs.team }}';
+            const model = '${{ steps.find_submission.outputs.model }}';
+            
+            const body = `## 🎯 Submission Graded!
+            
+            **Team:** ${team}
+            **Model:** ${model}
+            **AUC-ROC Score:** ${score}
+            
+            ✅ Your submission has been evaluated successfully.
+            
+            **Next Steps:**
+            - If you're happy with this score, we'll merge this PR
+            - Your score will appear on the [Leaderboard](https://ignatiusbalayo.github.io/NetLinkArena/leaderboard.html)
+            - Remember: **ONE submission only** per participant
+            
+            ---
+            *Submitted from: \`${{ steps.find_submission.outputs.run_dir }}\`*`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+      
+      - name: Check for Duplicate Submission
         run: |
-          TEAM_NAME="${{ github.actor }}"
-          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          ROC_AUC="${{ steps.eval.outputs.roc_auc }}"
-          AP="${{ steps.eval.outputs.ap }}"
+          TEAM="${{ steps.find_submission.outputs.team }}"
           
-          mkdir -p leaderboard
-          
-          if [ ! -f leaderboard/leaderboard.csv ]; then
-            echo "team,model,roc_auc,ap,timestamp_utc,notes" > leaderboard/leaderboard.csv
+          # Check if team already has entry in leaderboard
+          if [ -f leaderboard/leaderboard.csv ]; then
+            if grep -q "^${TEAM}," leaderboard/leaderboard.csv; then
+              echo "❌ ERROR: ${TEAM} has already submitted!"
+              echo "Only ONE submission per participant is allowed."
+              echo ""
+              echo "If you need to update your submission, please contact the organizers."
+              exit 1
+            fi
           fi
           
-          echo "${TEAM_NAME},Baseline,${ROC_AUC},${AP},${TIMESTAMP}," >> leaderboard/leaderboard.csv
-
-      # 8. RENDER MARKDOWN
-      - name: Render Markdown Leaderboard
+          echo "✅ First submission from ${TEAM}"
+      
+      - name: Update Leaderboard CSV
+        run: |
+          TEAM="${{ steps.find_submission.outputs.team }}"
+          MODEL="${{ steps.find_submission.outputs.model }}"
+          SCORE="${{ steps.eval.outputs.score }}"
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          NOTES="${{ steps.find_submission.outputs.notes }}"
+          
+          # Add PR number to notes
+          if [ -z "$NOTES" ]; then
+            NOTES="PR #${{ github.event.pull_request.number }}"
+          else
+            NOTES="${NOTES} (PR #${{ github.event.pull_request.number }})"
+          fi
+          
+          # Create leaderboard if doesn't exist
+          mkdir -p leaderboard
+          if [ ! -f leaderboard/leaderboard.csv ]; then
+            echo "team,model,score,timestamp_utc,notes" > leaderboard/leaderboard.csv
+          fi
+          
+          # Append new entry
+          echo "${TEAM},${MODEL},${SCORE},${TIMESTAMP},${NOTES}" >> leaderboard/leaderboard.csv
+          echo "✅ Added ${TEAM} to leaderboard"
+      
+      - name: Render Leaderboard Markdown
         run: |
           python competition/render_leaderboard.py
-
-      # 9. COMMIT & PUSH
-      - name: Commit and Push Changes
+          echo "✅ Leaderboard markdown rendered"
+      
+      - name: Commit Leaderboard Updates
         run: |
-          git config --global user.name "GitHub Actions Bot"
-          git config --global user.email "actions@github.com"
+          git config --global user.name "NetLinkArena Bot"
+          git config --global user.email "bot@netlinkarena.com"
+          
+          # Switch to main and pull latest
+          git checkout main
+          git pull origin main
+          
+          # Add leaderboard changes
           git add leaderboard/leaderboard.csv leaderboard/leaderboard.md
           
-          git diff --quiet && git diff --staged --quiet || git commit -m "🏆 Auto-update leaderboard for ${{ github.actor }}"
-          git push
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "🏆 Add submission: ${{ steps.find_submission.outputs.team }} scored ${{ steps.eval.outputs.score }}"
+            git push origin main
+            echo "✅ Leaderboard updated on main branch"
+          fi
