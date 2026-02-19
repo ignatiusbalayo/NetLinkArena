@@ -116,22 +116,22 @@ jobs:
               body: body
             });
       
-      #       - name: Check for Duplicate Submission
-      #         run: |
-      #           TEAM="${{ steps.find_submission.outputs.team }}"
-      #           
-      #           # Check if team already has entry in leaderboard
-      #           if [ -f leaderboard/leaderboard.csv ]; then
-      #             if grep -q "^${TEAM}," leaderboard/leaderboard.csv; then
-      #               echo "❌ ERROR: ${TEAM} has already submitted!"
-      #               echo "Only ONE submission per participant is allowed."
-      #               echo ""
-      #               echo "If you need to update your submission, please contact the organizers."
-      #               exit 1
-      #             fi
-      #           fi
-      #           
-      #           echo "✅ First submission from ${TEAM}"
+            - name: Check for Duplicate Submission
+              run: |
+                TEAM="${{ steps.find_submission.outputs.team }}"
+                
+                # Check if team already has entry in leaderboard
+                if [ -f leaderboard/leaderboard.csv ]; then
+                  if grep -q "^${TEAM}," leaderboard/leaderboard.csv; then
+                    echo "❌ ERROR: ${TEAM} has already submitted!"
+                    echo "Only ONE submission per participant is allowed."
+                    echo ""
+                    echo "If you need to update your submission, please contact the organizers."
+                    exit 1
+                  fi
+                fi
+                
+                echo "✅ First submission from ${TEAM}"
       
       - name: Update Leaderboard CSV
         run: |
