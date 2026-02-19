@@ -112,19 +112,19 @@ jobs:
             
             const body = `## 🎯 Submission Graded!
             
-**Team:** ${team}
-**Model:** ${model}
-**AUC-ROC Score:** ${score}
-
-✅ Your submission has been evaluated successfully.
-
-**Next Steps:**
-- If you're happy with this score, we'll merge this PR
-- Your score will appear on the [Leaderboard](https://ignatiusbalayo.github.io/NetLinkArena/leaderboard.html)
-- Remember: **ONE submission only** per participant
-
----
-*Submitted from: \`${{ steps.find_submission.outputs.run_dir }}\`*`;
+            **Team:** ${team}
+            **Model:** ${model}
+            **AUC-ROC Score:** ${score}
+            
+            ✅ Your submission has been evaluated successfully.
+            
+            **Next Steps:**
+            - If you're happy with this score, we'll merge this PR
+            - Your score will appear on the [Leaderboard](https://ignatiusbalayo.github.io/NetLinkArena/leaderboard.html)
+            - Remember: **ONE submission only** per participant
+            
+            ---
+            *Submitted from: \`${{ steps.find_submission.outputs.run_dir }}\`*`;
             
             github.rest.issues.createComment({
               issue_number: context.issue.number,
