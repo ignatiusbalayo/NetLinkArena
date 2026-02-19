@@ -1,5 +1,5 @@
 /* Minimal, dependency-free leaderboard UI:
- * - loads ../leaderboard/leaderboard.csv
+ * - loads ./leaderboard.csv
  * - search + filters (model, date)
  * - sortable columns with Kaggle-style ranking
  * - column toggles
@@ -198,7 +198,7 @@ function setupSorting(){
 async function main(){
   const status = document.getElementById("status");
   try{
-    const res = await fetch("../leaderboard/leaderboard.csv", {cache:"no-store"});
+    const res = await fetch("./leaderboard.csv", {cache:"no-store"});
     const txt = await res.text();
     const rows = parseCSV(txt);
 
