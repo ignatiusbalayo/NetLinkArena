@@ -173,7 +173,7 @@ jobs:
           git pull origin main
           
           # Add leaderboard changes
-          git add leaderboard/leaderboard.csv leaderboard/leaderboard.md
+          git add leaderboard/leaderboard.csv leaderboard/leaderboard.md docs/leaderboard.csv
           
           if git diff --staged --quiet; then
             echo "No changes to commit"
