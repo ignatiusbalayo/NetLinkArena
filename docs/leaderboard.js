@@ -1,9 +1,10 @@
 /* Minimal, dependency-free leaderboard UI:
  * - loads ../leaderboard/leaderboard.csv
  * - search + filters (model, date)
- * - sortable columns
+ * - sortable columns with Kaggle-style ranking
  * - column toggles
  */
+
 function parseCSV(text){
   const lines = text.trim().split(/\r?\n/);
   const header = lines[0].split(",");
@@ -42,16 +43,37 @@ const state = {
   hiddenCols: new Set(),
 };
 
+// Calculate Kaggle-style ranks (tied scores share rank)
+function calculateRanks(rows){
+  if(rows.length === 0) return [];
+  
+  let currentRank = 1;
+  let prevScore = null;
+  
+  return rows.map((r, idx) => {
+    const score = parseFloat(r.score);
+    
+    if(prevScore === null || score < prevScore){
+      currentRank = idx + 1;
+    }
+    // If score === prevScore, keep currentRank (tied)
+    
+    prevScore = score;
+    return { ...r, rank: currentRank };
+  });
+}
+
 function renderTable(){
   const tbody = document.querySelector("#tbl tbody");
   tbody.innerHTML = "";
-  const rows = state.filtered;
+  
+  // Calculate ranks based on current filtered/sorted data
+  const rankedRows = calculateRanks(state.filtered);
 
-  rows.forEach((r, idx) => {
+  rankedRows.forEach((r) => {
     const tr = document.createElement("tr");
-    const rank = idx + 1;
     const cells = [
-      ["rank", rank],
+      ["rank", r.rank],
       ["team", r.team],
       ["model", r.model],
       ["score", r.score],
@@ -77,7 +99,7 @@ function renderTable(){
   });
 
   document.getElementById("status").textContent =
-    rows.length ? `${rows.length} result(s)` : "No results";
+    rankedRows.length ? `${rankedRows.length} result(s)` : "No results";
 }
 
 function applyFilters(){
@@ -180,14 +202,14 @@ async function main(){
     const txt = await res.text();
     const rows = parseCSV(txt);
 
-    // normalize and compute rank order by score (descending) initially
+    // normalize rows
     const cleaned = rows
-      .filter(r => r.team) // ignore empty template line
+      .filter(r => r.team && r.team.trim()) // ignore empty rows
       .map(r => ({
-        timestamp_utc: r.timestamp_utc,
-        team: r.team,
-        model: (r.model || "").toLowerCase(),
-        score: r.score,
+        team: r.team || "",
+        model: r.model || "",
+        score: r.score || "0",
+        timestamp_utc: r.timestamp_utc || "",
         notes: r.notes || "",
       }));
 
@@ -198,7 +220,7 @@ async function main(){
     const sel = document.getElementById("modelFilter");
     [...modelSet].sort().forEach(m => {
       const opt = document.createElement("option");
-      opt.value = m;
+      opt.value = m.toLowerCase();
       opt.textContent = m;
       sel.appendChild(opt);
     });
