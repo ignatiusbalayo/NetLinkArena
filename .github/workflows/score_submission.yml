@@ -41,55 +41,38 @@ jobs:
       - name: Find Submission Files
         id: find_submission
         run: |
-          # Find the team folder from PR
-          TEAM="${{ github.event.pull_request.user.login }}"
-          
-          # Find their latest submission folder
-          TEAM_DIR="submissions/inbox/${TEAM}"
-          
-          if [ ! -d "$TEAM_DIR" ]; then
-            echo "❌ No submission folder found for team: ${TEAM}"
+          set -euo pipefail
+
+          # Find latest predictions.csv (Linux-safe)
+          PRED_FILE=$(find submissions/inbox -type f -name "predictions.csv" -printf '%T@ %p\n' 2>/dev/null \
+            | sort -n | tail -1 | cut -d' ' -f2-)
+
+          if [ -z "${PRED_FILE:-}" ]; then
+            echo "❌ No predictions.csv found in submissions/inbox/"
             exit 1
           fi
-          
-          # Find the latest run_id folder
-          RUN_DIR=$(ls -td ${TEAM_DIR}/*/ | head -1)
-          
-          if [ -z "$RUN_DIR" ]; then
-            echo "❌ No run folder found in ${TEAM_DIR}"
-            exit 1
-          fi
-          
-          # Check for predictions.csv
-          PRED_FILE="${RUN_DIR}predictions.csv"
-          
-          if [ ! -f "$PRED_FILE" ]; then
-            echo "❌ predictions.csv not found in ${RUN_DIR}"
-            exit 1
-          fi
-          
-          echo "submission_file=$PRED_FILE" >> $GITHUB_OUTPUT
-          echo "team=$TEAM" >> $GITHUB_OUTPUT
-          echo "run_dir=$RUN_DIR" >> $GITHUB_OUTPUT
-          
-          # Try to read metadata if it exists
-          META_FILE="${RUN_DIR}metadata.json"
-          if [ -f "$META_FILE" ]; then
+
+          # Extract team name robustly
+          TEAM=$(basename "$(dirname "$(dirname "$PRED_FILE")")")
+          RUN_DIR=$(dirname "$PRED_FILE")
+
+          echo "submission_file=$PRED_FILE" >> "$GITHUB_OUTPUT"
+          echo "team=$TEAM" >> "$GITHUB_OUTPUT"
+          echo "run_dir=$RUN_DIR" >> "$GITHUB_OUTPUT"
+
+          # Metadata
+          META_FILE="$RUN_DIR/metadata.json"
+          if [ -f "$META_FILE" ] && command -v jq >/dev/null 2>&1; then
             MODEL=$(jq -r '.model // "Unknown"' "$META_FILE")
             NOTES=$(jq -r '.notes // ""' "$META_FILE")
           else
             MODEL="Unknown"
             NOTES=""
           fi
-          
-          echo "model=$MODEL" >> $GITHUB_OUTPUT
-          echo "notes=$NOTES" >> $GITHUB_OUTPUT
-          
-          echo "✅ Found submission:"
-          echo "   Team: ${TEAM}"
-          echo "   File: ${PRED_FILE}"
-          echo "   Model: ${MODEL}"
-      
+
+          echo "model=$MODEL" >> "$GITHUB_OUTPUT"
+          echo "notes=$NOTES" >> "$GITHUB_OUTPUT"
+
       - name: Validate Submission Format
         run: |
           python competition/validate_submission.py "${{ steps.find_submission.outputs.submission_file }}"
@@ -112,19 +95,19 @@ jobs:
             
             const body = `## 🎯 Submission Graded!
             
-**Team:** ${team}
-**Model:** ${model}
-**AUC-ROC Score:** ${score}
-
-✅ Your submission has been evaluated successfully.
-
-**Next Steps:**
-- If you're happy with this score, we'll merge this PR
-- Your score will appear on the [Leaderboard](https://ignatiusbalayo.github.io/NetLinkArena/leaderboard.html)
-- Remember: **ONE submission only** per participant
-
----
-*Submitted from: \`${{ steps.find_submission.outputs.run_dir }}\`*`;
+            **Team:** ${team}
+            **Model:** ${model}
+            **AUC-ROC Score:** ${score}
+            
+            ✅ Your submission has been evaluated successfully.
+            
+            **Next Steps:**
+            - If you're happy with this score, we'll merge this PR
+            - Your score will appear on the [Leaderboard](https://ignatiusbalayo.github.io/NetLinkArena/leaderboard.html)
+            - Remember: **ONE submission only** per participant
+            
+            ---
+            *Submitted from: \`${{ steps.find_submission.outputs.run_dir }}\`*`;
             
             github.rest.issues.createComment({
               issue_number: context.issue.number,

@@ -1,4 +1,0 @@
-{
-  "model": "GCN-Baseline",
-  "notes": "2-layer GCN with 128->64 dimensions, dot product decoder, 100 epochs"
-}

@@ -1,5 +1,2 @@
 team,model,score,timestamp_utc,notes
 ignatiusbalayo,Baseline,0.5000,2026-02-14T14:05:14Z,Initial baseline
-pipeline_test,0.7777,TestModel,2026-02-19T14:50:32Z
-debug_team,Test,0.99,2026-02-19T14:51:12Z,manual_test
-debug_team,Test,0.99,2026-02-19T14:51:47Z,manual_test
