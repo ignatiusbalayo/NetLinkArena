@@ -7,7 +7,7 @@ This leaderboard is **auto-updated** when a submission is processed.
 | 1 | VinitSingroha | `GAT` | 0.8914 | 3/14/2026 12:09:20 | Model: GAT |
 | 2 | Gurur Gamgam | `GAT` | 0.8898 | 3/17/2026 18:52:44 | Model: GAT |
 | 3 | llm_Gemini_2.5pro_api | `GAT` | 0.8754 | 5/13/2026 20:05:11 | Model: GAT |
-| 4 | Mounia-z | `Add Other` | 0.8393 | 5/17/2026 22:23:14 | Model: Add Other |
+| 4 | llm_gpt5_4_codex | `Add Other` | 0.8393 | 5/17/2026 22:23:14 | Model: Add Other |
 | 5 | faranbutt | `GAT` | 0.8336 | 3/23/2026 9:00:20 | Model: GAT |
 | 6 | Emmanuel Owusu | `GAT` | 0.8223 | 3/26/2026 21:21:26 | Model: GAT |
 | 7 | bjayadikary | `GRAPHSAGE` | 0.8070 | 3/25/2026 6:47:52 | Model: GRAPHSAGE |
